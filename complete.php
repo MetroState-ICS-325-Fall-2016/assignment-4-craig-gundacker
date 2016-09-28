@@ -10,14 +10,19 @@ require 'FormHelper.php';
 $sweets = array('puff' => 'Sesame Seed Puff',
                 'square' => 'Coconut Milk Gelatin Square',
                 'cake' => 'Brown Sugar Cake',
-                'ricemeat' => 'Sweet Rice and Meat');
+                'ricemeat' => 'Sweet Rice and Meat',
+                'icecream' => 'Ice Cream');
 
 $main_dishes = array('cuke' => 'Braised Sea Cucumber',
                      'stomach' => "Sauteed Pig's Stomach",
                      'tripe' => 'Sauteed Tripe with Wine Sauce',
                      'taro' => 'Stewed Pork with Taro',
                      'giblets' => 'Baked Giblets with Salt',
-                     'abalone' => 'Abalone with Marrow and Duck Feet');
+                     'abalone' => 'Abalone with Marrow and Duck Feet',
+                     'pizza' => 'Cheese Pizza');
+
+$drinks = array('coke' => 'Coke', 'diet_coke' => 'Diet Coke', 'sprite' => 'Sprite', 'milk' => 'Milk',
+                'water' => 'Water');
 
 // The main page logic:
 // - If the form is submitted, validate and then process or redisplay
@@ -38,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 function show_form($errors = array()) {
     $defaults = array('delivery' => 'yes',
-                      'size'     => 'medium');
+                      'size'     => 'large');
     // Set up the $form object with proper defaults
     $form = new FormHelper($defaults);
 
@@ -56,7 +61,7 @@ function validate_form( ) {
     } else {
         $input['name'] = '';
     }
-    if (! strlen($input['name'])) {
+    if (!strlen($input['name'])) {
         $errors[] = 'Please enter your name.';
     }
     // size is required
@@ -65,7 +70,7 @@ function validate_form( ) {
     } else {
         $input['size'] = '';
     }
-    if (! in_array($input['size'], ['small','medium','large'])) {
+    if (!in_array($input['size'], ['small','medium','large', 'x-large'])) {
         $errors[] = 'Please select a size.';
     }
     // sweet is required
@@ -74,7 +79,7 @@ function validate_form( ) {
     } else {
         $input['sweet'] = '';
     }
-    if (! array_key_exists($input['sweet'], $GLOBALS['sweets'])) {
+    if (!array_key_exists($input['sweet'], $GLOBALS['sweets'])) {
         $errors[] = 'Please select a valid sweet item.';
     }
     // exactly two main dishes required
@@ -88,11 +93,35 @@ function validate_form( ) {
     } else {
         // We know there are two main dishes selected, so make sure they are
         // both valid
-        if (! (array_key_exists($input['main_dish'][0], $GLOBALS['main_dishes']) &&
-               array_key_exists($input['main_dish'][1], $GLOBALS['main_dishes']))) {
+        if (!(array_key_exists($input['main_dish'][0], $GLOBALS['main_dishes']) &&
+               array_key_exists($input['main_dish'][1], $GLOBALS['main_dishes'])))
+        {
             $errors[] = 'Please select exactly two valid main dishes.';
         }
     }
+
+    if (isset($_POST['drink'])) {
+        $input['drink'] = $_POST['drink'];
+    } else {
+        $input['drink'] = '';
+    }
+    if (!array_key_exists($input['drink'], $GLOBALS['drinks'])){
+        $errors[] = 'Please select a drink';
+    }
+
+    //email is required
+    if (isset($_POST['email'])) {
+        $input['email'] = trim($_POST['email']);
+    } else {
+        $input['email'] = '';
+    }
+    if (!strlen($input['email'])) {
+        $errors[] = 'Please enter your email.';
+    }
+    elseif (!filter_var($input['email'], FILTER_VALIDATE_EMAIL)){
+        $errors[] = 'Email format not correct';
+    }
+
     // if delivery is checked, then comments must contain something
     if (isset($_POST['delivery'])) {
         $input['delivery'] = $_POST['delivery'];
@@ -117,6 +146,7 @@ function process_form($input) {
     $sweet = $GLOBALS['sweets'][ $input['sweet'] ];
     $main_dish_1 = $GLOBALS['main_dishes'][ $input['main_dish'][0] ];
     $main_dish_2 = $GLOBALS['main_dishes'][ $input['main_dish'][1] ];
+    $drink = $GLOBALS['drinks'][ $input['drink']];
     if (isset($input['delivery']) && ($input['delivery'] == 'yes')) {
         $delivery = 'do';
     } else {
@@ -124,16 +154,17 @@ function process_form($input) {
     }
     // build up the text of the order message
     $message=<<<_ORDER_
-Thank you for your order, {$input['name']}.
-You requested the {$input['size']} size of $sweet, $main_dish_1, and $main_dish_2.
-You $delivery want delivery.\n
+    Thank you for your order, {$input['name']} at {$input['email']}.
+    You requested the {$input['size']} size of $sweet, $main_dish_1 and $main_dish_2.
+    You would like a $drink to drink.
+    You $delivery want delivery.\n
 _ORDER_;
+
     if (strlen(trim($input['comments']))) {
         $message .= 'Your comments: '.$input['comments'];
     }
 
-    // send the message to the chef (don't actually try to send it, uncomment for production):
-    # mail('chef@restaurant.example.com', 'New Order', $message);
+    //mail($input['email'], 'Your Order', $message);
 
     // print the message, but encode any HTML entities
     // and turn newlines into <br/> tags
